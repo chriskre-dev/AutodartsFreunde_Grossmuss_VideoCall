@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autodartsfreunde Großmuß</title>
+<title>Autodartsfreunde Großmuß</title>
     <style>
 html, body {
   height: 100%;
@@ -349,6 +349,7 @@ opacity: 0;                /* Macht es unsichtbar */
 
 
 <script>
+//boardID=59388563-65ed-4dd4-bf39-c5507048c277&name=Chris
 const MuteDirector = false;
 const params = new URLSearchParams(window.location.search);
 const BOARD_ID = params.get('boardID');
@@ -361,11 +362,14 @@ const AUTODARTS_NAME = params.get('name');
 const URL_AUTODARTS = `https://play.autodarts.com/boards/${BOARD_ID}/follow`;
 const ROOM_NAME = "AutodartsFreunde_Grossmuss"; 
 const API_KEY = "Autodarts2026!"; // Entspricht &api=
-const STREAM_ID = BOARD_ID.replaceAll("-", "");
+const randomCode = generateRandomCode(10);
+const STREAM_ID = randomCode+"_"+BOARD_ID.replaceAll("-", "");
+
 // URLs zusammensetzen
 		
 //const directorUrl = `https://vdo.ninja?room=${ROOM_NAME}&api=${API_KEY}&include=1`;
 const directorUrl = `https://vdo.ninja?room=${ROOM_NAME}&hash=dc75&password=${API_KEY}&push=${STREAM_ID}&mirroroutput&label=${AUTODARTS_NAME}&showlabels=1&webcam&autostart`;
+
 const iframe = document.getElementById('ninja-director');
 if(!MuteDirector)
 	iframe.src = directorUrl;
@@ -376,7 +380,17 @@ else
 const iframeAD = document.getElementById('iFrameAutodarts');
 iframeAD.src = URL_AUTODARTS;
 
-
+function generateRandomCode(length) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    result += characters.charAt(randomIndex);
+  }
+  
+  return result;
+}
 
 function toggleFlexbox() {
   const flexbox = document.getElementById('video-grid');
@@ -418,7 +432,7 @@ function updateVideoGrid() {
   const grid = document.getElementById('video-grid');
   const participantCount = grid.children.length;
 	  const flexbox = document.getElementById('video-grid');
-  const isHidden = flexbox.classList.toggle('hidden');
+  const isHidden = flexbox.classList.contains('hidden');
   if (participantCount === 0) {
     grid.style.height = '0px';
   if(!isHidden)
@@ -482,8 +496,11 @@ updateVideoGrid();
 				//link von dir selber
 				if(streamId === STREAM_ID)
 				{
-					obsViewUrl = `https://vdo.ninja/?view=${streamId}&room=${ROOM_NAME}&password=${API_KEY}&solo&label=${AUTODARTS_NAME}&showlabels=1&autostart&autoplay=1&clean`;
+					obsViewUrl = `https://vdo.ninja/?view=${streamId}&room=${ROOM_NAME}&password=${API_KEY}&solo&label=${AUTODARTS_NAME}&showlabels=1&autostart&autoplay=1&clean&mute=1`;
 					closeOverlay();
+					console.log(STREAM_ID);
+					
+
 				}
 			  }
 			  else if(data.action === 'view-connection-info' && streamId !== STREAM_ID)
@@ -500,7 +517,7 @@ updateVideoGrid();
 				if(data.value === false)
 				{
 					const videoTiles = document.querySelectorAll('div.video-tile');
-					const update = false;
+					var update = false;
 					videoTiles.forEach((vt, index) => {
 					
 						console.log(`VT Source: ${vt.dataset.streamurl}`);
@@ -508,12 +525,12 @@ updateVideoGrid();
 						{
 						if(vt.dataset.streamurl.includes(`https://vdo.ninja/?view=${streamId}`))
 							{
-								//console.log(`Der ist weg: ${streamId}`);
+								console.log(`Der ist weg: ${streamId}`);
 								grid.removeChild(vt);
 								update = true;
 							}
 							else{
-								//console.log(`Der ist noch da: ${streamId}`);
+								console.log(`Der ist noch da: ${streamId}`);
 							}
 						}
 					});
@@ -548,8 +565,6 @@ updateVideoGrid();
 					if(add)
 					{
 					var test = 1;
-					if(streamId !== STREAM_ID)
-						test = 3;
 						for (let i = 1; i <= test; i++){
 							// 1. Die Video-Kachel (Wrapper) erstellen
 							const tile = document.createElement('div');
