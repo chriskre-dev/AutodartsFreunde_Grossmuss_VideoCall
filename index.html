@@ -349,9 +349,10 @@ opacity: 0;                /* Macht es unsichtbar */
 
 
 <script>
-const MuteDirector = true;
-const BOARD_ID = "59388563-65ed-4dd4-bf39-c5507048c277";
-const AUTODARTS_NAME = "CHRISKRE";
+const MuteDirector = false;
+const params = new URLSearchParams(window.location.search);
+const BOARD_ID = params.get('boardID');
+const AUTODARTS_NAME = params.get('name');
 
 
 
