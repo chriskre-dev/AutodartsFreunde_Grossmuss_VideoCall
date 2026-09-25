@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrollfreies iFrame Dashboard</title>
+    <style>
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+/* Der Body zwingt die Elemente untereinander */
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Verhindert Scrollbalken während der Animation */
+}
+
+/* Nimmt IMMER den komplett verfügbaren Restplatz ein */
+.top-box {
+  flex: 1; 
+  background-color: #16181c;
+  box-sizing: border-box;
+  transition: all 0.3s ease-in-out; /* Optionale Animation für den Inhalt */
+}
+
+/* Der Expander-Button */
+.expander-btn {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  z-index: 10;
+}
+
+/* Start-Zustand: Geschlossen und komplett unsichtbar (0% Höhe) */
+.flex-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;    /* Zwingt alle Videos, in einer einzigen Reihe zu bleiben */
+  gap: 5px;            /* Abstand zwischen den Videos */
+  width: 100%;          /* Nutzt immer die volle Breite des Fensters */
+  max-width: 100vw;     /* Verhindert das Ausbrechen aus dem Viewport */
+  padding: 16px;
+  box-sizing: border-box;
+  
+  /* Höhen-Steuerung aus den vorherigen Schritten */
+  height: 0; 
+  padding: 0 5px; 
+  opacity: 0;
+  overflow: hidden; 
+  transition: height 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+/* Dieser Zustand wird per JavaScript aktiviert */
+.flex-container.open {
+  height: 25%; /* Öffnet sich auf 25% (Top-Box schrumpft dadurch auf 75%) */
+  padding: 15px; /* Aktiviert das Padding wieder */
+  opacity: 1;
+}
+
+/* Die Elemente innerhalb der horizontalen Flexbox */
+.flex-item {
+  /* 
+    flex: 1 1 0px; 
+    Bedeutet: Jede Box startet bei 0px Basisbreite, wächst völlig gleichmäßig (1) 
+    und schrumpft völlig gleichmäßig (1) synchron mit dem Browserfenster.
+  */
+  flex: 1 1 0px; 
+  
+  /* WICHTIG: Keine min-width verwenden, damit sie unendlich mitskalieren können */
+  
+  aspect-ratio: 16 / 9; /* Hält das 16:9 Verhältnis beim Skalieren perfekt bei */
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.flex-item iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+        /* Der iFrame-Container füllt jetzt die Box flexibel aus, statt 16:9 zu erzwingen */
+        .iframe-wrapper {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .iframe-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0px;
+            background-color: white;
+        }
+		
+/* Das Overlay (Hintergrund-Verdunkelung) */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Die Box, die das iframe hält */
+.overlay-content {
+  background-color: white;
+  padding: 35px 15px 15px 15px; /* Platz oben für den Close-Button */
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  
+  /* Flexiblere und größere Dimensionen für Webseiten-Inhalte */
+  width: 85%;
+  max-width: 800px;
+  height: 70%;
+  box-sizing: border-box;
+}
+
+/* Der Close-Button (X) */
+.close-btn {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  font-weight: bold;
+  color: #666;
+  cursor: pointer;
+  z-index: 30; /* Liegt über dem Iframe */
+}
+
+.close-btn:hover {
+  color: #000;
+}
+
+/* Das Iframe-Styling */
+.overlay-iframe {
+  width: 100%;
+  height: 100%;
+  border: none; /* Entfernt den hässlichen Standard-Rahmen des Browsers */
+  border-radius: 4px;
+}
+.stream-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;      /* Erlaubt den Umbruch, wenn das Fenster zu klein wird */
+  gap: 16px;            /* Abstand zwischen den Elementen */
+  width: 100%;          /* Nutzt die volle Breite des Fensters / Parent-Elements */
+  padding: 16px;
+  box-sizing: border-box;
+}
+.videoSettings{
+	height: 0;
+}
+.videoSettings.open{
+	height: auto;
+}
+
+/* Dieser Zustand wird per JavaScript aktiviert */
+.video-area.open {
+  max-height: 25%; /* Öffnet sich auf 25% (Top-Box schrumpft dadurch auf 75%) */
+  padding: 0px; /* Aktiviert das Padding wieder */
+  opacity: 1;
+}
+
+.video-grid {
+  display: grid;
+  max-height: 25%;
+  width: 100vw;
+  height: 0; /* Bleibt bei 25% der Seitenhöhe */
+  padding: 0px;
+  /* HIER ERGÄNZEN: Automatische Zeilen teilen sich den Platz gleichmäßig auf */
+  grid-auto-rows: 1fr; 
+  justify-content: center; /* Sorgt dafür, dass die Zeile in der Mitte des Bildschirms sitzt */
+  transition: all 0.5s ease-in-out;
+}
+/* Dieser Zustand wird per JavaScript aktiviert */
+.video-grid.hidden {
+height: 0px !important;    /* Schrumpft das Grid zusammen */
+opacity: 0;                /* Macht es unsichtbar */
+  pointer-events: none;      /* Verhindert Klicks im unsichtbaren Zustand */
+}
+
+.video-tile {
+  position: relative;
+  background-color: yellow;
+  border-radius: 0px;
+  overflow: hidden;
+  
+  /* HIER DIE ÄNDERUNG: 'aspect-ratio' entfernt, damit das Grid die Höhe erzwingt */
+  min-height: 0; 
+  min-width: 0;
+  
+    /* Der Browser berechnet die Breite automatisch passend im 16:9 Format */
+	height: 100%;
+  width: auto; 
+  aspect-ratio: 16 / 9;
+  
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  margin: 0 5px 5px 0;
+}
+
+
+/* Das iFrame füllt nun exakt die 16:9 Kachel aus */
+.video-tile iframe {
+  /* Die Höhe wird vom Elternelement vorgegeben */
+  height: 100%;
+  
+  /* Der Browser berechnet die Breite automatisch passend im 16:9 Format */
+  width: auto; 
+  aspect-ratio: 16 / 9;
+  background: blue;
+  border: 0;
+  display: block; /* Verhindert unschöne Abstände unter dem Video */
+  margin: 0 auto; /* Zentriert das 16:9-Video, falls die Kachel breiter ist */
+}
+
+.name-tag {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: sans-serif;
+  font-size: 13px;
+  pointer-events: none; /* Verhindert, dass Klicks auf den Namen das iFrame blockieren */
+}
+.button-group {
+  display: flex;       /* Richtet die Buttons horizontal nebeneinander aus */
+  gap: 0px;           /* Definiert den Abstand zwischen den beiden Buttons */
+  width: 100%;         /* Der Container nutzt die volle verfügbare Breite */
+}
+
+/* Der erste Button richtet sich nach seinem Inhalt */
+.btn-auto {
+  flex-grow: 0;        /* Dehnt sich nicht künstlich aus */
+  width: auto;         /* Breite basiert rein auf dem Text */
+  white-space: nowrap; /* Verhindert, dass der Text im Button umbricht */
+  background: #333;
+  color: white;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  z-index: 10;
+}
+
+/* Der zweite Button füllt den gesamten restlichen Platz auf */
+.btn-fill {
+  flex-grow: 1;        /* Schnappt sich 100% des verbleibenden Platzes */
+    background: #333;
+  color: white;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  z-index: 10;
+}
+/* CSS-Styling speziell für das Video-Symbol */
+.video-icon {
+  width: 18px;          /* Perfekte Größe passend zur Schrifthöhe */
+  height: 18px;
+  display: inline-block;
+  flex-shrink: 0;       /* Verhindert, dass das Icon gequetscht wird */
+}
+    </style>
+</head>
+<body>
+
+	<div class="top-box">
+	    <div class="iframe-wrapper">
+			<iframe id="iFrameAutodarts" src="" title="Haupt iFrame"></iframe>
+		</div>
+		  <!-- Das Overlay-Element mit ID für JavaScript -->
+		  <div class="overlay" id="myOverlay">
+			<div class="overlay-content">
+			  <!-- Das Schließen-Kreuz oben rechts -->
+			  <button class="close-btn" onclick="closeOverlay()">&times;</button>
+			   <iframe src="" id="ninja-director" title="Overlay Content" class="overlay-iframe" allow="autoplay; autostart; camera; microphone; display-capture"></iframe>
+			</div>
+		  </div>
+		</div>
+		
+	</div>
+
+<!-- Der Expander-Button -->
+<div class="button-group">
+  <button class="btn-auto" ID="btnVideoSet"  onclick="openOverlay()">
+  <svg class="video-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 7l-7 5 7 5V7z"></path>
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+    </svg>
+  </button>
+  <button class="btn-fill" id="expanderVideo" onclick="toggleFlexbox()">▲ Autodartsfreunde Großmuß Videochat</button>
+</div>
+
+
+
+
+<!-- Die horizontale Flexbox -->
+
+
+<div id="video-grid" class="video-grid hidden">
+	  <!-- Streams -->
+
+
+
+  </div>
+
+
+
+
+
+
+
+
+<script>
+const MuteDirector = true;
+const BOARD_ID = "59388563-65ed-4dd4-bf39-c5507048c277";
+const AUTODARTS_NAME = "CHRISKRE";
+
+
+
+
+
+const URL_AUTODARTS = `https://play.autodarts.com/boards/${BOARD_ID}/follow`;
+const ROOM_NAME = "AutodartsFreunde_Grossmuss"; 
+const API_KEY = "Autodarts2026!"; // Entspricht &api=
+const STREAM_ID = BOARD_ID.replaceAll("-", "");
+// URLs zusammensetzen
+		
+//const directorUrl = `https://vdo.ninja?room=${ROOM_NAME}&api=${API_KEY}&include=1`;
+const directorUrl = `https://vdo.ninja?room=${ROOM_NAME}&hash=dc75&password=${API_KEY}&push=${STREAM_ID}&mirroroutput&label=${AUTODARTS_NAME}&showlabels=1&webcam&autostart`;
+const iframe = document.getElementById('ninja-director');
+if(!MuteDirector)
+	iframe.src = directorUrl;
+else
+	iframe.src = `${directorUrl}&mute=1`;
+
+
+const iframeAD = document.getElementById('iFrameAutodarts');
+iframeAD.src = URL_AUTODARTS;
+
+
+
+function toggleFlexbox() {
+  const flexbox = document.getElementById('video-grid');
+  //const btnSet = document.getElementById('btnVideoSet');
+  const btn = document.getElementById('expanderVideo');
+  
+// Schaltet die Klasse "hidden" an oder aus
+  const isHidden = flexbox.classList.toggle('hidden');
+  //btnSet.classList.toggle('open');
+  
+  //falls keine Videos drinnen sind ausblenden
+    const grid = document.getElementById('video-grid');
+  const participantCount = grid.children.length;
+  if(!isHidden && participantCount == 0)
+	toggleFlexbox();
+  
+  
+  if(participantCount == 0)
+	btn.innerHTML = 'Autodartsfreunde Großmuß Videochat (keiner Da)';
+  else{
+	  if (isHidden) {
+		  btn.innerHTML = '▲ Autodartsfreunde Großmuß Videochat';
+	  } else {
+		btn.innerHTML = '▼ Autodartsfreunde Großmuß Videochat';
+	  }
+  }
+  
+  
+}
+function closeOverlay() {
+  const overlay = document.getElementById('myOverlay');
+  overlay.classList.add('hidden');
+}
+function openOverlay() {
+  const overlay = document.getElementById('myOverlay');
+  overlay.classList.remove('hidden');
+}
+function updateVideoGrid() {
+  const grid = document.getElementById('video-grid');
+  const participantCount = grid.children.length;
+	  const flexbox = document.getElementById('video-grid');
+  const isHidden = flexbox.classList.toggle('hidden');
+  if (participantCount === 0) {
+    grid.style.height = '0px';
+  if(!isHidden)
+	toggleFlexbox();
+    return;
+  }
+
+  const gap = 10;
+
+  // 1. Auf grid stellen und die Spalten flexibel, aber zentrierbar anlegen
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `repeat(${participantCount}, minmax(0, max-content))`; // max-content erlaubt Zentrierung
+  grid.style.justifyContent = 'center'; // ZENTRIERT die Elemente der Zeile horizontal
+  grid.style.gap = `${gap}px`;
+
+  // 2. Verfügbare Gesamtbreite auslesen
+  const gridWidth = grid.clientWidth;
+
+  // 3. 16:9 Höhe berechnen (wie bisher)
+  const totalGapsWidth = gap * (participantCount - 1);
+  const singleVideoWidth = (gridWidth - totalGapsWidth) / participantCount;
+  const idealHeight = singleVideoWidth * (9 / 16);
+
+  grid.style.height = `${idealHeight}px`;
+  
+    if(isHidden)
+	toggleFlexbox();
+}
+
+
+// Beispiel: Simulation für das Hinzufügen von Teilnehmern
+// Rufe updateVideoGrid() immer auf, wenn ein Stream hinzugefügt oder entfernt wird.
+const observerVideo = new MutationObserver(updateVideoGrid);
+observerVideo.observe(document.getElementById('video-grid'), { childList: true });
+
+// Erstaufruf
+updateVideoGrid();
+
+
+ window.addEventListener('message', function(e) {
+
+            // Optionale Sicherheitsprüfung: Nur Nachrichten von VDO.Ninja erlauben
+            if (!e.origin.includes('vdo.ninja')) {
+						  console.log("Anything:", JSON.stringify(event.data, null, 2));
+			return;
+			}
+
+            const data = e.data;
+
+			  //console.log("VDO.Ninja Data:", JSON.stringify(event.data, null, 2));
+			const streamId = data.streamID || (data.msg ? data.msg.streamID : null);
+			  
+			  
+
+			if (streamId)
+			{
+				const grid = document.getElementById('video-grid');
+			  var obsViewUrl = null;
+			  if(data.action === 'push-video-track')
+			  {
+				//link von dir selber
+				if(streamId === STREAM_ID)
+				{
+					obsViewUrl = `https://vdo.ninja/?view=${streamId}&room=${ROOM_NAME}&password=${API_KEY}&solo&label=${AUTODARTS_NAME}&showlabels=1&autostart&autoplay=1&clean`;
+					closeOverlay();
+				}
+			  }
+			  else if(data.action === 'view-connection-info' && streamId !== STREAM_ID)
+			  {
+				//Neuer Teilnehmer
+				const label = data.value?.label ?? "Gast";
+				obsViewUrl = `https://vdo.ninja/?view=${streamId}&room=${ROOM_NAME}&password=${API_KEY}&solo&label=${label}&showlabels=1&autostart&autoplay=1`;
+
+			  }
+			  else if(data.action === 'end-view-connection' || data.action === 'view-connection')
+			  {
+				//hier verlässt jemand den raum
+				//console.log("VDO.Ninja Data:", JSON.stringify(event.data, null, 2));
+				if(data.value === false)
+				{
+					const videoTiles = document.querySelectorAll('div.video-tile');
+					const update = false;
+					videoTiles.forEach((vt, index) => {
+					
+						console.log(`VT Source: ${vt.dataset.streamurl}`);
+						if(vt.dataset.streamurl.includes(`https://vdo.ninja/?view=`))
+						{
+						if(vt.dataset.streamurl.includes(`https://vdo.ninja/?view=${streamId}`))
+							{
+								//console.log(`Der ist weg: ${streamId}`);
+								grid.removeChild(vt);
+								update = true;
+							}
+							else{
+								//console.log(`Der ist noch da: ${streamId}`);
+							}
+						}
+					});
+					if(update)
+					 updateVideoGrid();
+				}
+				//wenn Du selber es verlässt wird overlay geöffnet
+				
+					
+			  }
+			  else{
+			  //console.log("VDO.Ninja Data:", JSON.stringify(event.data, null, 2));
+			  				//console.log("VDO.Ninja Data:", JSON.stringify(event.data, null, 2));
+			  }
+			  if(obsViewUrl !== null)
+			  {
+			  
+					const iframes = document.querySelectorAll('iframe');
+					//console.log(`Anzahl der gefundenen Iframes: ${iframes.length}`);
+
+					// 3. Durch alle Iframes iterieren und Attribute ausgeben
+					var add = true;
+					console.log(`Source: ${obsViewUrl}`);
+					iframes.forEach((iframe, index) => {
+						//console.log(`Iframe Source: ${iframe.src}`);
+						if(iframe.src === obsViewUrl)
+							{
+							add = false;
+							}
+					});
+			  
+					if(add)
+					{
+					var test = 1;
+					if(streamId !== STREAM_ID)
+						test = 3;
+						for (let i = 1; i <= test; i++){
+							// 1. Die Video-Kachel (Wrapper) erstellen
+							const tile = document.createElement('div');
+							tile.className = 'video-tile';
+							tile.dataset.streamurl = obsViewUrl;
+							// 2. Dein Iframe-Code
+							const iframe = document.createElement('iframe');
+							iframe.src = obsViewUrl; // Deine dynamische URL
+							//console.log(obsViewUrl);
+							iframe.allow = "autoplay; camera; microphone; fullscreen; display-capture";
+							iframe.style.border = "0";
+
+
+
+							// 4. Alles zusammenbauen und ins Grid einfügen
+							tile.appendChild(iframe);
+							grid.appendChild(tile);
+
+							// WICHTIG: Die Grid-Spalten nach dem Hinzufügen neu berechnen
+							updateVideoGrid();
+							}
+							
+
+							  const flexbox = document.getElementById('video-grid');
+							const isHidden = flexbox.classList.toggle('hidden');
+							if(isHidden)
+								toggleFlexbox();
+						
+					}
+					else{
+					console.log("existiert bereits");
+					}
+				} 
+			}
+			  
+            
+			
+        });
+</script>
+
+
+
+
+<script>
+
+</script>
+
+
+</body>
+</html>
